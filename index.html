@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>현재 시각</title>
+    <style>
+        @font-face {
+            font-family: 'Font2';
+            src: url('2.ttf');
+        }
+        @font-face {
+            font-family: 'Font3';
+            src: url('3.ttf');
+        }
+        @font-face {
+            font-family: 'Font4';
+            src: url('4.ttf');
+        }
+        @font-face {
+            font-family: 'Font5';
+            src: url('5.ttf');
+        }
+        @font-face {
+            font-family: 'Font6';
+            src: url('6.ttf');
+        }
+        @font-face {
+            font-family: 'Font7';
+            src: url('7.ttf');
+        }
+        @font-face {
+            font-family: 'Font8';
+            src: url('8.ttf');
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+            overflow: hidden;
+            cursor: default; /* 기본 커서 설정 */
+        }
+        body.hide-cursor {
+            cursor: none; /* 커서를 숨김 */
+        }
+        #clock {
+            display: flex;
+            font-size: 2em;
+        }
+        .digit {
+            width: 0.9em;
+            text-align: center;
+        }
+        .time {
+            font-size: 6em;
+            margin: 0 -0.16em; /* 숫자와 콜론 간의 간격을 더 좁힘 */
+        }
+        .ampm {
+            display: none;
+        }
+        body.dark-mode {
+            background-color: #3D3C3A;
+            color: white;
+        }
+        body.dark-mode #clock {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="clock"></div>
+
+    <script>
+        let fontIndex = 0;
+        const fonts = [
+            'Arial, sans-serif', // 기본 폰트
+            'Font2',
+            'Font3',
+            'Font4',
+            'Font5',
+            'Font6',
+            'Font7',
+            'Font8'
+        ];
+        let timeout;
+
+        function updateClock() {
+            const now = new Date();
+            const options = { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+            const timeString = now.toLocaleTimeString('ko-KR', options).split(' ')[1];
+
+            const clockElement = document.getElementById('clock');
+            clockElement.innerHTML = '';
+
+            for (let char of timeString) {
+                const span = document.createElement('span');
+                span.className = 'digit time';
+                span.textContent = char;
+                span.style.fontFamily = fonts[fontIndex]; // 유지된 폰트 설정
+                clockElement.appendChild(span);
+            }
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+
+        function cycleFont(reverse = false) {
+            if (reverse) {
+                fontIndex = (fontIndex - 1 + fonts.length) % fonts.length;
+            } else {
+                fontIndex = (fontIndex + 1) % fonts.length;
+            }
+            document.querySelectorAll('.digit').forEach(element => {
+                element.style.fontFamily = fonts[fontIndex];
+            });
+        }
+
+        function resetCursorTimeout() {
+            clearTimeout(timeout);
+            document.body.classList.remove('hide-cursor');
+            timeout = setTimeout(() => {
+                document.body.classList.add('hide-cursor');
+            }, 5000);
+        }
+
+        document.addEventListener('mousemove', resetCursorTimeout);
+        document.addEventListener('keydown', (event) => {
+            resetCursorTimeout();
+            if (event.key === 'd' || event.key === 'D') {
+                toggleDarkMode();
+            } else if (event.key === 'f' || event.key === 'F') {
+                cycleFont(event.shiftKey);
+            }
+        });
+
+        setInterval(updateClock, 1000);
+        updateClock(); // Initial call to display the time immediately
+        resetCursorTimeout(); // Start the cursor timeout on load
+    </script>
+</body>
+</html>
