@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="logo.png">
+    <title>스톱워치</title>
+    <style>
+        @font-face {
+            font-family: 'Font1';
+            src: url('fonts/1.ttf');
+        }
+        @font-face {
+            font-family: 'Font2';
+            src: url('fonts/2.ttf');
+        }
+        @font-face {
+            font-family: 'Font3';
+            src: url('fonts/3.ttf');
+        }
+        @font-face {
+            font-family: 'Font4';
+            src: url('fonts/4.ttf');
+        }
+        @font-face {
+            font-family: 'Font5';
+            src: url('fonts/5.ttf');
+        }
+        @font-face {
+            font-family: 'Font6';
+            src: url('fonts/6.ttf');
+        }
+        @font-face {
+            font-family: 'Font7';
+            src: url('fonts/7.ttf');
+        }
+        @font-face {
+            font-family: 'Font8';
+            src: url('fonts/8.ttf');
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+            overflow: hidden;
+            cursor: default;
+        }
+
+        body.hide-cursor {
+            cursor: none;
+        }
+
+        body.dark-mode {
+            background-color: #3D3C3A;
+            color: white;
+        }
+
+        .ishidden {
+            display: none !important;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #333;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        body.dark-mode .btn {
+            background-color: #fff;
+            color: #333;
+        }
+
+        #stopwatch {
+            display: flex;
+            align-items: center;
+            font-size: 10em; /* 시계 크기 키우기 */
+            letter-spacing: 0.05em; /* 숫자 간격 조정 */
+        }
+
+        .digit, .colon, .dot {
+            width: 1ch; /* 각 숫자와 콜론의 간격을 동일하게 설정 */
+            display: inline-block;
+            text-align: center;
+            font-size: 1em;
+            margin: 0 0em;
+        }
+
+        #lapsPanel {
+            position: absolute;
+            left: -250px;
+            top: 0;
+            width: 240px;
+            height: 100%;
+            background-color: #f0f0f0;
+            color: #333;
+            overflow-y: auto;
+            transition: left 0.3s;
+            border: 2px solid black;
+        }
+
+        body.dark-mode #lapsPanel {
+            background-color: #3D3C3A;
+            color: white;
+            border: 2px solid white;
+        }
+
+        #lapsPanel.show {
+            left: 0;
+        }
+
+        .lap {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column; /* 현재 시간을 다음 줄로 이동 */
+        }
+
+        body.dark-mode .lap {
+            background-color: #3D3C3A;
+            color: white;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <button class="btn" onclick="location.href='index.html'">현재 시각</button>
+        <button class="btn" onclick="location.href='timer.html'">타이머</button>
+        <button class="btn" onclick="location.href='stopwatch.html'">스톱워치</button>
+    </div>
+    <div id="stopwatch">
+        <span class="digit" id="hoursTens">0</span><span class="digit" id="hoursOnes">0</span><span class="colon">:</span>
+        <span class="digit" id="minutesTens">0</span><span class="digit" id="minutesOnes">0</span><span class="colon">:</span>
+        <span class="digit" id="secondsTens">0</span><span class="digit" id="secondsOnes">0</span><span class="dot">.</span>
+        <span class="digit" id="millisecondsTens">0</span><span class="digit" id="millisecondsOnes">0</span>
+    </div>
+    <div id="lapsPanel">
+        <div id="laps"></div>
+    </div>
+    <div class="controls">
+        <button class="btn" onclick="startStopwatch()">시작</button>
+        <button class="btn" onclick="stopStopwatch()">정지</button>
+        <button class="btn" onclick="resetStopwatch()">리셋</button>
+        <button class="btn" onclick="lapStopwatch()">타임 랩</button>
+    </div>
+
+    <script>
+        let fontIndex = 0;
+        const fonts = [
+            'Arial, sans-serif',
+            'Font1', 'Font2', 'Font3', 'Font4', 'Font5', 'Font6', 'Font7', 'Font8'
+        ];
+
+        let stopwatchInterval;
+        let stopwatchTime = 0;
+        let laps = [];
+        let detailedMode = false;
+        let isRunning = false;
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+
+        function cycleFont(reverse = false) {
+            fontIndex = reverse ? (fontIndex - 1 + fonts.length) % fonts.length : (fontIndex + 1) % fonts.length;
+            document.querySelectorAll('.digit, .colon, .dot').forEach(element => {
+                element.style.fontFamily = fonts[fontIndex];
+            });
+            updateStopwatchDisplay();
+        }
+
+        function resetCursorTimeout() {
+            clearTimeout(timeout);
+            document.body.classList.remove('hide-cursor');
+            timeout = setTimeout(() => document.body.classList.add('hide-cursor'), 5000);
+        }
+
+        function toggleVisibility() {
+            document.querySelectorAll('#controls, .controls, #lapsPanel, .btn').forEach(element => {
+                element.classList.toggle('ishidden');
+            });
+        }
+
+        let timeout;
+        document.addEventListener('mousemove', resetCursorTimeout);
+        document.addEventListener('keydown', (event) => {
+            resetCursorTimeout();
+            if (event.key === 'd' || event.key === 'D') toggleDarkMode();
+            else if (event.key === 'f' || event.key === 'F') cycleFont(event.shiftKey);
+            else if (event.key === 't' || event.key === 'T') toggleDetailedMode();
+            else if (event.key === 'b' || event.key === 'B') toggleVisibility();
+            else if (event.key === 'Tab') {
+                event.preventDefault();
+                toggleLapsPanel();
+            } else if (event.key === ' ') {
+                event.preventDefault();
+                if (isRunning) {
+                    stopStopwatch();
+                } else {
+                    startStopwatch();
+                }
+            } else if (event.key === 'l' || event.key === 'L') {
+                lapStopwatch();
+            }
+        });
+
+        function updateStopwatchDisplay() {
+            const hours = Math.floor(stopwatchTime / 3600000);
+            const minutes = Math.floor((stopwatchTime % 3600000) / 60000);
+            const seconds = Math.floor((stopwatchTime % 60000) / 1000);
+            const milliseconds = Math.floor((stopwatchTime % 1000) / 10);
+
+            document.getElementById('hoursTens').textContent = Math.floor(hours / 10);
+            document.getElementById('hoursOnes').textContent = hours % 10;
+            document.getElementById('minutesTens').textContent = Math.floor(minutes / 10);
+            document.getElementById('minutesOnes').textContent = minutes % 10;
+            document.getElementById('secondsTens').textContent = Math.floor(seconds / 10);
+            document.getElementById('secondsOnes').textContent = seconds % 10;
+            document.getElementById('millisecondsTens').textContent = Math.floor(milliseconds / 10);
+            document.getElementById('millisecondsOnes').textContent = milliseconds % 10;
+        }
+
+        function getFormattedTime() {
+            const hoursTens = document.getElementById('hoursTens').textContent;
+            const hoursOnes = document.getElementById('hoursOnes').textContent;
+            const minutesTens = document.getElementById('minutesTens').textContent;
+            const minutesOnes = document.getElementById('minutesOnes').textContent;
+            const secondsTens = document.getElementById('secondsTens').textContent;
+            const secondsOnes = document.getElementById('secondsOnes').textContent;
+            const millisecondsTens = document.getElementById('millisecondsTens').textContent;
+            const millisecondsOnes = document.getElementById('millisecondsOnes').textContent;
+
+            return `${hoursTens}${hoursOnes}:${minutesTens}${minutesOnes}:${secondsTens}${secondsOnes}.${millisecondsTens}${millisecondsOnes}`;
+        }
+
+        function startStopwatch() {
+            if (!isRunning) {
+                clearInterval(stopwatchInterval);
+                stopwatchInterval = setInterval(() => {
+                    stopwatchTime += 10;
+                    updateStopwatchDisplay();
+                }, 10);
+                isRunning = true;
+            }
+        }
+
+        function stopStopwatch() {
+            clearInterval(stopwatchInterval);
+            isRunning = false;
+        }
+
+        function resetStopwatch() {
+            clearInterval(stopwatchInterval);
+            stopwatchTime = 0;
+            laps = [];
+            updateStopwatchDisplay();
+            document.getElementById('laps').innerHTML = '';
+            isRunning = false;
+        }
+
+        function lapStopwatch() {
+            const now = new Date();
+            const gmtPlus9 = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // GMT+9 기준으로 변환
+            const formattedTime = gmtPlus9.toISOString().slice(0, 19).replace('T', ' ');
+            const lapTime = {
+                time: stopwatchTime,
+                detailedTime: formattedTime
+            };
+            laps.push(lapTime);
+
+            const lapElement = document.createElement('div');
+            lapElement.className = 'lap';
+            lapElement.textContent = `랩 ${laps.length}: ${getFormattedTime()}`;
+            if (detailedMode) {
+                const detailedElement = document.createElement('div');
+                detailedElement.textContent = `(${lapTime.detailedTime})`;
+                lapElement.appendChild(detailedElement);
+            }
+            document.getElementById('laps').appendChild(lapElement);
+        }
+
+        function toggleDetailedMode() {
+            detailedMode = !detailedMode;
+            document.querySelectorAll('.lap').forEach((lapElement, index) => {
+                if (detailedMode) {
+                    const detailedElement = document.createElement('div');
+                    detailedElement.textContent = `(${laps[index].detailedTime})`;
+                    lapElement.appendChild(detailedElement);
+                } else {
+                    lapElement.lastChild.remove();
+                }
+            });
+        }
+
+        function toggleLapsPanel() {
+            document.getElementById('lapsPanel').classList.toggle('show');
+        }
+
+        resetCursorTimeout();
+        updateStopwatchDisplay();
+    </script>
+</body>
+</html>
